@@ -474,33 +474,51 @@ function MaterialsView({ materials }: { materials: Material[] }) {
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws) as any[];
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
         let count = 0;
-        for (const row of data) {
-          if (row.sku && row.name) {
+        for (const row of jsonData) {
+          // Normalize keys to lowercase and trim
+          const normalizedRow: any = {};
+          Object.keys(row).forEach(key => {
+            normalizedRow[key.toLowerCase().trim()] = row[key];
+          });
+
+          // Support common synonyms for headers
+          const sku = normalizedRow.sku || normalizedRow.codigo || normalizedRow.id || normalizedRow.sku_material;
+          const name = normalizedRow.name || normalizedRow.nombre || normalizedRow.material || normalizedRow.descripcion_material;
+          const description = normalizedRow.description || normalizedRow.descripcion || '';
+          const category = normalizedRow.category || normalizedRow.categoria || '';
+          const unit = normalizedRow.unit || normalizedRow.unidad || 'unidades';
+
+          if (sku && name) {
             await inventoryService.upsertMaterial({
-              sku: String(row.sku),
-              name: String(row.name),
-              description: row.description || '',
-              category: row.category || '',
-              unit: row.unit || 'unidades'
+              sku: String(sku).trim(),
+              name: String(name).trim(),
+              description: String(description).trim(),
+              category: String(category).trim(),
+              unit: String(unit).trim().toLowerCase()
             });
             count++;
           }
         }
-        toast.success(`${count} materiales importados correctamente`);
-        setIsImportOpen(false);
+        
+        if (count > 0) {
+          toast.success(`${count} materiales importados correctamente`);
+          setIsImportOpen(false);
+        } else {
+          toast.error('No se encontraron materiales válidos en el archivo. Verifica las columnas (sku, nombre).');
+        }
       } catch (error) {
         console.error(error);
-        toast.error('Error al procesar el archivo Excel');
+        toast.error('Error al procesar el archivo Excel. Asegúrate de que sea un formato válido.');
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   return (
