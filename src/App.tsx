@@ -57,13 +57,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 5000); // Increased to 5s for full animation
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
     const testConnection = async () => {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
@@ -99,13 +92,13 @@ export default function App() {
   }, []);
 
   if (loading && showSplash) {
-    return <SplashScreen />;
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
 
   return (
     <AnimatePresence mode="wait">
       {showSplash ? (
-        <SplashScreen key="splash" />
+        <SplashScreen key="splash" onComplete={() => setShowSplash(false)} />
       ) : (
         <div key="main" className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col md:flex-row">
           <Toaster position="top-right" />
@@ -185,7 +178,7 @@ export default function App() {
   );
 }
 
-function SplashScreen() {
+function SplashScreen({ onComplete }: { onComplete: () => void, key?: string }) {
   return (
     <motion.div 
       className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 overflow-hidden"
@@ -246,6 +239,7 @@ function SplashScreen() {
               initial={{ pathLength: 0, rotate: 10 }}
               animate={{ pathLength: 1 }}
               transition={{ duration: 4, ease: "easeInOut", delay: 0.3 }}
+              onAnimationComplete={onComplete}
             />
           </svg>
         </div>
