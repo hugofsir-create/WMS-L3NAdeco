@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: materials
+    // Document ID: {sku}
+    // Fields:
+    //   - sku: string (required)
+    //   - name: string (required)
+    //   - description: string (optional)
+    //   - category: string (optional)
+    //   - unit: string (required)
+    //
+    // Collection: movements
+    // Document ID: {movementId}
+    // Fields:
+    //   - type: string (IN/OUT)
+    //   - materialSku: string
+    //   - materialName: string
+    //   - quantity: number
+    //   - status: string (APTO/NO_APTO)
+    //   - referenceNumber: string
+    //   - notes: string
+    //   - timestamp: timestamp
+    //   - createdBy: string
+    //
+    // Collection: inventory
+    // Document ID: {sku}
+    // Fields:
+    //   - materialSku: string
+    //   - apto: number
+    //   - noApto: number
+    //   - lastUpdated: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "hugofsir@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidMaterial(data) {
+      return data.sku is string && data.sku.size() > 0 &&
+             data.name is string && data.name.size() > 0 &&
+             data.unit is string;
+    }
+
+    function isValidMovement(data) {
+      return data.type in ['IN', 'OUT'] &&
+             data.materialSku is string &&
+             data.quantity is number && data.quantity > 0 &&
+             data.status in ['APTO', 'NO_APTO'] &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidInventory(data) {
+      return data.materialSku is string &&
+             data.apto is number &&
+             data.noApto is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /materials/{sku} {
+      allow read, write: if true;
+    }
+
+    match /movements/{movementId} {
+      allow read, create: if true;
+      allow update, delete: if true;
+    }
+
+    match /inventory/{sku} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "Material": {
+      "title": "Material",
+      "description": "Material master record",
+      "type": "object",
+      "properties": {
+        "sku": { "type": "string", "description": "Unique identifier for the material" },
+        "name": { "type": "string", "description": "Name of the material" },
+        "description": { "type": "string", "description": "Description of the material" },
+        "category": { "type": "string", "description": "Category of the material" },
+        "unit": { "type": "string", "description": "Unit of measure (e.g., units, kg, meters)" }
+      },
+      "required": ["sku", "name"]
+    },
+    "Movement": {
+      "title": "Movement",
+      "description": "Inventory movement (inbound or outbound)",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["IN", "OUT"], "description": "Type of movement" },
+        "materialSku": { "type": "string", "description": "SKU of the material" },
+        "materialName": { "type": "string", "description": "Name of the material at the time of movement" },
+        "quantity": { "type": "number", "description": "Quantity moved" },
+        "status": { "type": "string", "enum": ["APTO", "NO_APTO"], "description": "Quality status" },
+        "referenceNumber": { "type": "string", "description": "Load number (for IN) or Exit number (for OUT)" },
+        "notes": { "type": "string", "description": "Additional notes" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the movement occurred" },
+        "createdBy": { "type": "string", "description": "User ID who created the movement" }
+      },
+      "required": ["type", "materialSku", "quantity", "timestamp"]
+    },
+    "Inventory": {
+      "title": "Inventory",
+      "description": "Current stock levels per material and status",
+      "type": "object",
+      "properties": {
+        "materialSku": { "type": "string", "description": "SKU of the material" },
+        "apto": { "type": "number", "description": "Quantity of fit material" },
+        "noApto": { "type": "number", "description": "Quantity of unfit material" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["materialSku"]
+    }
+  },
+  "firestore": {
+    "/materials/{sku}": {
+      "schema": "Material",
+      "description": "Collection of materials"
+    },
+    "/movements/{movementId}": {
+      "schema": "Movement",
+      "description": "History of all inventory movements"
+    },
+    "/inventory/{sku}": {
+      "schema": "Inventory",
+      "description": "Current inventory levels"
+    }
+  }
+}
