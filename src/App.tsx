@@ -666,6 +666,7 @@ function InboundView({ materials }: { materials: Material[] }) {
     quantity: '',
     status: 'APTO' as 'APTO' | 'NO_APTO',
     referenceNumber: '',
+    batch: '',
     notes: ''
   });
 
@@ -673,11 +674,11 @@ function InboundView({ materials }: { materials: Material[] }) {
 
   // State for bulk lines
   const [bulkLines, setBulkLines] = useState<any[]>([
-    { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', notes: '', isNew: false }
+    { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }
   ]);
 
   const addBulkLine = () => {
-    setBulkLines([...bulkLines, { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', notes: '', isNew: false }]);
+    setBulkLines([...bulkLines, { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }]);
   };
 
   const removeBulkLine = (id: number) => {
@@ -736,6 +737,7 @@ function InboundView({ materials }: { materials: Material[] }) {
         quantity: Number(formData.quantity),
         status: formData.status,
         referenceNumber: formData.referenceNumber,
+        batch: formData.batch,
         notes: formData.notes
       });
       toast.success('Ingreso registrado correctamente');
@@ -747,6 +749,7 @@ function InboundView({ materials }: { materials: Material[] }) {
         quantity: '',
         status: 'APTO',
         referenceNumber: '',
+        batch: '',
         notes: ''
       });
     } catch (error) {
@@ -789,13 +792,14 @@ function InboundView({ materials }: { materials: Material[] }) {
           quantity: Number(line.quantity),
           status: line.status as 'APTO' | 'NO_APTO',
           referenceNumber: line.referenceNumber,
+          batch: line.batch,
           notes: line.notes
         };
       });
 
       await inventoryService.bulkInbound(movements);
       toast.success(`${movements.length} ingresos procesados correctamente`);
-      setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', notes: '', isNew: false }]);
+      setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }]);
     } catch (error) {
       toast.error('Error al procesar ingresos masivos');
     }
@@ -925,6 +929,15 @@ function InboundView({ materials }: { materials: Material[] }) {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label>Lote</Label>
+                    <Input 
+                      placeholder="Ej: LOTE-001" 
+                      className="bg-neutral-800 border-neutral-700"
+                      value={formData.batch} 
+                      onChange={e => setFormData({...formData, batch: e.target.value})} 
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Cantidad</Label>
                     <Input 
                       type="number" 
@@ -979,7 +992,8 @@ function InboundView({ materials }: { materials: Material[] }) {
                 <div className="hidden md:grid grid-cols-12 gap-4 px-2 text-xs font-semibold text-neutral-500 uppercase">
                   <div className="col-span-2">SKU</div>
                   <div className="col-span-2">Nombre</div>
-                  <div className="col-span-2">Carga</div>
+                  <div className="col-span-1">Carga</div>
+                  <div className="col-span-1">Lote</div>
                   <div className="col-span-1">Cant.</div>
                   <div className="col-span-2">Estado</div>
                   <div className="col-span-2">Notas</div>
@@ -1007,13 +1021,22 @@ function InboundView({ materials }: { materials: Material[] }) {
                         onChange={e => updateBulkLine(line.id, 'materialName', e.target.value)} 
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <Label className="md:hidden mb-1">Carga</Label>
                       <Input 
                         placeholder="Carga" 
                         className="bg-neutral-800 border-neutral-700"
                         value={line.referenceNumber} 
                         onChange={e => updateBulkLine(line.id, 'referenceNumber', e.target.value)} 
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <Label className="md:hidden mb-1">Lote</Label>
+                      <Input 
+                        placeholder="Lote" 
+                        className="bg-neutral-800 border-neutral-700"
+                        value={line.batch} 
+                        onChange={e => updateBulkLine(line.id, 'batch', e.target.value)} 
                       />
                     </div>
                     <div className="col-span-1">
@@ -1063,7 +1086,7 @@ function InboundView({ materials }: { materials: Material[] }) {
               </div>
               
               <div className="mt-8 flex justify-end gap-4">
-                <Button variant="outline" onClick={() => setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', notes: '', isNew: false }])}>
+                <Button variant="outline" onClick={() => setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }])}>
                   Limpiar Todo
                 </Button>
                 <Button onClick={handleBulkSubmit} className="px-8">
@@ -1084,6 +1107,7 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
     quantity: '',
     status: 'APTO' as 'APTO' | 'NO_APTO',
     referenceNumber: '',
+    batch: '',
     notes: ''
   });
 
@@ -1112,6 +1136,7 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
         quantity: Number(formData.quantity),
         status: formData.status,
         referenceNumber: formData.referenceNumber,
+        batch: formData.batch,
         notes: formData.notes
       });
       toast.success('Salida registrada correctamente');
@@ -1120,6 +1145,7 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
         quantity: '',
         status: 'APTO',
         referenceNumber: '',
+        batch: '',
         notes: ''
       });
     } catch (error) {
@@ -1166,6 +1192,14 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
                   placeholder="Ej: SAL-98765" 
                   value={formData.referenceNumber} 
                   onChange={e => setFormData({...formData, referenceNumber: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Lote</Label>
+                <Input 
+                  placeholder="Ej: LOTE-001" 
+                  value={formData.batch} 
+                  onChange={e => setFormData({...formData, batch: e.target.value})} 
                 />
               </div>
               <div className="space-y-2">
@@ -1223,6 +1257,7 @@ function HistoryView({ movements }: { movements: Movement[] }) {
       Cantidad: m.quantity,
       Estado: m.status,
       Referencia: m.referenceNumber,
+      Lote: m.batch || '',
       Notas: m.notes || '',
       Usuario: m.createdBy
     }));
@@ -1268,6 +1303,7 @@ function HistoryView({ movements }: { movements: Movement[] }) {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Material</TableHead>
                   <TableHead>Ref.</TableHead>
+                  <TableHead>Lote</TableHead>
                   <TableHead className="text-right">Cant.</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
@@ -1288,6 +1324,7 @@ function HistoryView({ movements }: { movements: Movement[] }) {
                       <p className="text-[10px] text-neutral-400 font-mono">{m.materialSku}</p>
                     </TableCell>
                     <TableCell className="text-xs font-medium">{m.referenceNumber}</TableCell>
+                    <TableCell className="text-xs">{m.batch || '-'}</TableCell>
                     <TableCell className="text-right font-bold">{m.quantity}</TableCell>
                     <TableCell>
                       <Badge variant={m.status === 'APTO' ? 'outline' : 'secondary'} className={m.status === 'APTO' ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50'}>
@@ -1298,7 +1335,7 @@ function HistoryView({ movements }: { movements: Movement[] }) {
                 ))}
                 {filteredMovements.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-neutral-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-neutral-500">
                       No hay movimientos registrados para este filtro.
                     </TableCell>
                   </TableRow>
