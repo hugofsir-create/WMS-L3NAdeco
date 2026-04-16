@@ -15,6 +15,7 @@ export interface Movement {
   status: 'APTO' | 'NO_APTO';
   referenceNumber: string; // Numero de carga (IN) or Numero de salida (OUT)
   batch?: string; // Lote
+  expiryDate?: string; // Vencimiento
   notes?: string;
   timestamp: any; // Firestore Timestamp
   createdBy: string;

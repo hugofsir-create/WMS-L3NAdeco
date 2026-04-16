@@ -747,6 +747,7 @@ function InboundView({ materials }: { materials: Material[] }) {
     status: 'APTO' as 'APTO' | 'NO_APTO',
     referenceNumber: '',
     batch: '',
+    expiryDate: '',
     notes: ''
   });
 
@@ -754,11 +755,11 @@ function InboundView({ materials }: { materials: Material[] }) {
 
   // State for bulk lines
   const [bulkLines, setBulkLines] = useState<any[]>([
-    { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }
+    { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', expiryDate: '', notes: '', isNew: false }
   ]);
 
   const addBulkLine = () => {
-    setBulkLines([...bulkLines, { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }]);
+    setBulkLines([...bulkLines, { id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', expiryDate: '', notes: '', isNew: false }]);
   };
 
   const removeBulkLine = (id: number) => {
@@ -814,10 +815,11 @@ function InboundView({ materials }: { materials: Material[] }) {
         type: 'IN',
         materialSku: formData.materialSku,
         materialName: formData.materialName || materials.find(m => m.sku === formData.materialSku)?.name || formData.materialSku,
-        quantity: Number(formData.quantity),
+        quantity: Number(formData.quantity.replace(',', '.')),
         status: formData.status,
         referenceNumber: formData.referenceNumber,
         batch: formData.batch,
+        expiryDate: formData.expiryDate,
         notes: formData.notes
       });
       toast.success('Ingreso registrado correctamente');
@@ -830,6 +832,7 @@ function InboundView({ materials }: { materials: Material[] }) {
         status: 'APTO',
         referenceNumber: '',
         batch: '',
+        expiryDate: '',
         notes: ''
       });
     } catch (error: any) {
@@ -870,17 +873,18 @@ function InboundView({ materials }: { materials: Material[] }) {
           type: 'IN' as const,
           materialSku: line.materialSku,
           materialName: line.materialName || materials.find(m => m.sku === line.materialSku)?.name || line.materialSku,
-          quantity: Number(line.quantity),
+          quantity: Number(String(line.quantity).replace(',', '.')),
           status: line.status as 'APTO' | 'NO_APTO',
           referenceNumber: line.referenceNumber,
           batch: line.batch,
+          expiryDate: line.expiryDate,
           notes: line.notes
         };
       });
 
       await inventoryService.bulkInbound(movements);
       toast.success(`${movements.length} ingresos procesados correctamente`);
-      setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }]);
+      setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', expiryDate: '', notes: '', isNew: false }]);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || 'Error al procesar ingresos masivos');
@@ -1020,9 +1024,18 @@ function InboundView({ materials }: { materials: Material[] }) {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label>Fecha de Vencimiento</Label>
+                    <Input 
+                      type="date" 
+                      className="bg-neutral-800 border-neutral-700"
+                      value={formData.expiryDate} 
+                      onChange={e => setFormData({...formData, expiryDate: e.target.value})} 
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Cantidad</Label>
                     <Input 
-                      type="number" 
+                      type="text" 
                       placeholder="0" 
                       className="bg-neutral-800 border-neutral-700"
                       value={formData.quantity} 
@@ -1073,11 +1086,12 @@ function InboundView({ materials }: { materials: Material[] }) {
               <div className="space-y-4">
                 <div className="hidden md:grid grid-cols-12 gap-4 px-2 text-xs font-semibold text-neutral-500 uppercase">
                   <div className="col-span-2">SKU</div>
-                  <div className="col-span-2">Nombre</div>
+                  <div className="col-span-1">Nombre</div>
                   <div className="col-span-1">Carga</div>
                   <div className="col-span-1">Lote</div>
+                  <div className="col-span-2">Vence</div>
                   <div className="col-span-1">Cant.</div>
-                  <div className="col-span-2">Estado</div>
+                  <div className="col-span-1">Estado</div>
                   <div className="col-span-2">Notas</div>
                   <div className="col-span-1"></div>
                 </div>
@@ -1093,7 +1107,7 @@ function InboundView({ materials }: { materials: Material[] }) {
                         onChange={e => updateBulkLine(line.id, 'materialSku', e.target.value)} 
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <Label className="md:hidden mb-1">Nombre</Label>
                       <Input 
                         placeholder="Nombre" 
@@ -1121,17 +1135,26 @@ function InboundView({ materials }: { materials: Material[] }) {
                         onChange={e => updateBulkLine(line.id, 'batch', e.target.value)} 
                       />
                     </div>
+                    <div className="col-span-2">
+                      <Label className="md:hidden mb-1">Vence</Label>
+                      <Input 
+                        type="date"
+                        className="bg-neutral-800 border-neutral-700"
+                        value={line.expiryDate} 
+                        onChange={e => updateBulkLine(line.id, 'expiryDate', e.target.value)} 
+                      />
+                    </div>
                     <div className="col-span-1">
                       <Label className="md:hidden mb-1">Cant.</Label>
                       <Input 
-                        type="number" 
+                        type="text" 
                         placeholder="0" 
                         className="bg-neutral-800 border-neutral-700"
                         value={line.quantity} 
                         onChange={e => updateBulkLine(line.id, 'quantity', e.target.value)} 
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <Label className="md:hidden mb-1">Estado</Label>
                       <Select value={line.status} onValueChange={v => updateBulkLine(line.id, 'status', v)}>
                         <SelectTrigger className="bg-neutral-800 border-neutral-700">
@@ -1190,6 +1213,7 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
     status: 'APTO' as 'APTO' | 'NO_APTO',
     referenceNumber: '',
     batch: '',
+    expiryDate: '',
     notes: ''
   });
 
@@ -1203,11 +1227,6 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
       return;
     }
 
-    if (Number(formData.quantity) > availableStock) {
-      toast.error('Stock insuficiente para realizar la salida');
-      return;
-    }
-
     const material = materials.find(m => m.sku === formData.materialSku);
     
     try {
@@ -1215,10 +1234,11 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
         type: 'OUT',
         materialSku: formData.materialSku,
         materialName: material?.name || formData.materialSku,
-        quantity: Number(formData.quantity),
+        quantity: Number(formData.quantity.replace(',', '.')),
         status: formData.status,
         referenceNumber: formData.referenceNumber,
         batch: formData.batch,
+        expiryDate: formData.expiryDate,
         notes: formData.notes
       });
       toast.success('Salida registrada correctamente');
@@ -1228,6 +1248,7 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
         status: 'APTO',
         referenceNumber: '',
         batch: '',
+        expiryDate: '',
         notes: ''
       });
     } catch (error) {
@@ -1280,15 +1301,26 @@ function OutboundView({ materials, inventory }: { materials: Material[], invento
                 <Label>Lote</Label>
                 <Input 
                   placeholder="Ej: LOTE-001" 
+                  className="bg-neutral-800 border-neutral-700"
                   value={formData.batch} 
                   onChange={e => setFormData({...formData, batch: e.target.value})} 
                 />
               </div>
               <div className="space-y-2">
+                <Label>Fecha de Vencimiento (Opcional)</Label>
+                <Input 
+                  type="date"
+                  className="bg-neutral-800 border-neutral-700"
+                  value={formData.expiryDate} 
+                  onChange={e => setFormData({...formData, expiryDate: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Cantidad a Despachar</Label>
                 <Input 
-                  type="number" 
+                  type="text" 
                   placeholder="0" 
+                  className="bg-neutral-800 border-neutral-700"
                   value={formData.quantity} 
                   onChange={e => setFormData({...formData, quantity: e.target.value})} 
                 />
@@ -1340,6 +1372,7 @@ function HistoryView({ movements }: { movements: Movement[] }) {
       Estado: m.status,
       Referencia: m.referenceNumber,
       Lote: m.batch || '',
+      Vencimiento: m.expiryDate || '',
       Notas: m.notes || '',
       Usuario: m.createdBy
     }));
@@ -1386,6 +1419,7 @@ function HistoryView({ movements }: { movements: Movement[] }) {
                   <TableHead>Material</TableHead>
                   <TableHead>Ref.</TableHead>
                   <TableHead>Lote</TableHead>
+                  <TableHead>Vence</TableHead>
                   <TableHead className="text-right">Cant.</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
@@ -1407,6 +1441,7 @@ function HistoryView({ movements }: { movements: Movement[] }) {
                     </TableCell>
                     <TableCell className="text-xs font-medium">{m.referenceNumber}</TableCell>
                     <TableCell className="text-xs">{m.batch || '-'}</TableCell>
+                    <TableCell className="text-xs">{m.expiryDate || '-'}</TableCell>
                     <TableCell className="text-right font-bold">{m.quantity}</TableCell>
                     <TableCell>
                       <Badge variant={m.status === 'APTO' ? 'outline' : 'secondary'} className={m.status === 'APTO' ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50'}>

@@ -18,6 +18,7 @@ export const inventoryService = {
       status: movement.status,
       referenceNumber: movement.referenceNumber,
       batch: movement.batch || '',
+      expiryDate: movement.expiryDate || '',
       notes: movement.notes || '',
       timestamp: serverTimestamp(),
       createdBy: auth.currentUser?.uid || 'anonymous',
@@ -48,12 +49,10 @@ export const inventoryService = {
           if (isApto) currentInventory.apto += quantity;
           else currentInventory.noApto += quantity;
         } else {
-          // OUT
+          // OUT - Stock check removed as requested "eliminar el controlador de cantidades"
           if (isApto) {
-            if (currentInventory.apto < quantity) throw new Error('Stock insuficiente (Apto)');
             currentInventory.apto -= quantity;
           } else {
-            if (currentInventory.noApto < quantity) throw new Error('Stock insuficiente (No Apto)');
             currentInventory.noApto -= quantity;
           }
         }
