@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, type ReactNode } from 'react';
 import { 
   LayoutDashboard, 
   Package, 
@@ -33,6 +33,70 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'motion/react';
 
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  errorInfo: any;
+}
+
+class ErrorBoundary extends (Component as any) {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, errorInfo: error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    const { hasError, errorInfo } = this.state;
+    if (hasError) {
+      let displayMessage = 'Ha ocurrido un error inesperado.';
+      try {
+        const errObj = JSON.parse(errorInfo.message);
+        if (errObj.error) {
+          if (errObj.error.includes('Missing or insufficient permissions')) {
+            displayMessage = 'Error de Permisos: No tienes autorización para realizar esta operación. Por favor inicia sesión o contacta al administrador.';
+          } else {
+            displayMessage = `Error de Base de Datos: ${errObj.error}`;
+          }
+        }
+      } catch (e) {
+        displayMessage = errorInfo.message || displayMessage;
+      }
+
+      return (
+        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 text-center">
+          <Card className="max-w-md w-full bg-slate-900 border-slate-800">
+            <CardHeader>
+              <div className="mx-auto w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center mb-4">
+                <AlertCircle className="w-6 h-6 text-rose-500" />
+              </div>
+              <CardTitle className="text-white text-xl">¡Ups! Algo salió mal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-slate-400 mb-6">{displayMessage}</p>
+              <Button onClick={() => window.location.reload()} className="w-full bg-blue-600 hover:bg-blue-700">
+                Recargar Aplicación
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // Components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,11 +109,16 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  );
+}
+
+function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
-  const [user] = useState<any>({
-    displayName: 'Administrador',
-    email: 'admin@calico.com.ar',
-  });
+  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [materials, setMaterials] = useState<Material[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -57,6 +126,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+
     const testConnection = async () => {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
@@ -88,6 +161,7 @@ export default function App() {
       unsubMaterials();
       unsubMovements();
       unsubInventory();
+      unsubAuth();
     };
   }, []);
 
@@ -146,15 +220,34 @@ export default function App() {
             </nav>
 
             <div className="p-4 border-t border-slate-800 bg-slate-900/50">
-              <div className="flex items-center gap-3 px-2">
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
-                  AD
+              {user ? (
+                <div className="flex items-center gap-3 px-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" />
+                    ) : (
+                      user.displayName?.charAt(0) || 'U'
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate text-slate-200">{user.displayName || 'Usuario'}</p>
+                    <button 
+                      onClick={() => signOut(auth)}
+                      className="text-[10px] text-rose-500 hover:text-rose-400 uppercase tracking-wider font-bold transition-colors"
+                    >
+                      Cerrar Sesión
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate text-slate-200">{user.displayName}</p>
-                  <p className="text-[10px] text-slate-500 truncate uppercase tracking-wider font-bold">WMS Manager</p>
-                </div>
-              </div>
+              ) : (
+                <Button 
+                  onClick={() => signInWithPopup(auth, new GoogleAuthProvider())}
+                  variant="outline" 
+                  className="w-full bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600 hover:text-white"
+                >
+                  Iniciar Sesión
+                </Button>
+              )}
             </div>
           </aside>
 
@@ -764,8 +857,9 @@ function InboundView({ materials }: { materials: Material[] }) {
         batch: '',
         notes: ''
       });
-    } catch (error) {
-      toast.error('Error al registrar ingreso');
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || 'Error al registrar ingreso');
     }
   };
 
@@ -812,8 +906,9 @@ function InboundView({ materials }: { materials: Material[] }) {
       await inventoryService.bulkInbound(movements);
       toast.success(`${movements.length} ingresos procesados correctamente`);
       setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', notes: '', isNew: false }]);
-    } catch (error) {
-      toast.error('Error al procesar ingresos masivos');
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || 'Error al procesar ingresos masivos');
     }
   };
 
