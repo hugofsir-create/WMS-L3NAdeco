@@ -118,7 +118,6 @@ export default function App() {
 
 function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [materials, setMaterials] = useState<Material[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -126,10 +125,6 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-    });
-
     const testConnection = async () => {
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
@@ -161,7 +156,6 @@ function AppContent() {
       unsubMaterials();
       unsubMovements();
       unsubInventory();
-      unsubAuth();
     };
   }, []);
 
@@ -220,34 +214,15 @@ function AppContent() {
             </nav>
 
             <div className="p-4 border-t border-slate-800 bg-slate-900/50">
-              {user ? (
-                <div className="flex items-center gap-3 px-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" />
-                    ) : (
-                      user.displayName?.charAt(0) || 'U'
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate text-slate-200">{user.displayName || 'Usuario'}</p>
-                    <button 
-                      onClick={() => signOut(auth)}
-                      className="text-[10px] text-rose-500 hover:text-rose-400 uppercase tracking-wider font-bold transition-colors"
-                    >
-                      Cerrar Sesión
-                    </button>
-                  </div>
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+                  AD
                 </div>
-              ) : (
-                <Button 
-                  onClick={() => signInWithPopup(auth, new GoogleAuthProvider())}
-                  variant="outline" 
-                  className="w-full bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600 hover:text-white"
-                >
-                  Iniciar Sesión
-                </Button>
-              )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate text-slate-200">Administrador</p>
+                  <p className="text-[10px] text-slate-500 truncate uppercase tracking-wider font-bold">WMS Manager</p>
+                </div>
+              </div>
             </div>
           </aside>
 
