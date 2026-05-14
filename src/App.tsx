@@ -16,7 +16,9 @@ import {
   Filter,
   Boxes,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Printer,
+  FileText
 } from 'lucide-react';
 import { 
   collection, 
@@ -748,6 +750,8 @@ function MaterialForm({ onSuccess }: { onSuccess: () => void }) {
 
 function InboundView({ materials }: { materials: Material[] }) {
   const [isBulk, setIsBulk] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
   const [formData, setFormData] = useState({
     materialSku: '',
     materialName: '',
@@ -832,6 +836,20 @@ function InboundView({ materials }: { materials: Material[] }) {
         expiryDate: formData.expiryDate,
         notes: formData.notes
       });
+
+      const receipt = {
+        referenceNumber: formData.referenceNumber,
+        timestamp: new Date(),
+        items: [{
+          materialSku: formData.materialSku,
+          materialName: formData.materialName || materials.find(m => m.sku === formData.materialSku)?.name || formData.materialSku,
+          quantity: Number(formData.quantity.replace(',', '.')),
+          batch: formData.batch,
+          expiryDate: formData.expiryDate
+        }]
+      };
+      setReceiptData(receipt);
+      setShowReceipt(true);
       toast.success('Ingreso registrado correctamente');
       setFormData({
         materialSku: '',
@@ -893,6 +911,21 @@ function InboundView({ materials }: { materials: Material[] }) {
       });
 
       await inventoryService.bulkInbound(movements);
+
+      const receipt = {
+        referenceNumber: validLines[0].referenceNumber, // Simplificación: toma el primer número de referencia
+        timestamp: new Date(),
+        items: movements.map(m => ({
+          materialSku: m.materialSku,
+          materialName: m.materialName,
+          quantity: m.quantity,
+          batch: m.batch,
+          expiryDate: m.expiryDate
+        }))
+      };
+      setReceiptData(receipt);
+      setShowReceipt(true);
+
       toast.success(`${movements.length} ingresos procesados correctamente`);
       setBulkLines([{ id: Date.now(), materialSku: '', materialName: '', category: '', unit: 'unidades', quantity: '', status: 'APTO', referenceNumber: '', batch: '', expiryDate: '', notes: '', isNew: false }]);
     } catch (error: any) {
@@ -1212,6 +1245,67 @@ function InboundView({ materials }: { materials: Material[] }) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
+        <DialogContent className="max-w-4xl bg-white text-slate-900 border-none shadow-2xl p-0 overflow-hidden">
+          <div id="receipt-print-area" className="p-8">
+            <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-6">
+              <div>
+                <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-900">Parte de Recepción</h2>
+                <div className="flex items-center gap-2 text-slate-500 font-medium mt-1">
+                  <FileText className="w-4 h-4" />
+                  <span>Documento de Entrada No. {receiptData?.referenceNumber}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xl font-bold text-slate-900">Calico S.A.</div>
+                <div className="text-sm text-slate-500">{receiptData?.timestamp.toLocaleString()}</div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <Table>
+                <TableHeader className="bg-slate-100 hover:bg-slate-100">
+                  <TableRow className="hover:bg-transparent border-slate-300">
+                    <TableHead className="text-slate-900 font-bold">SKU</TableHead>
+                    <TableHead className="text-slate-900 font-bold">Descripción</TableHead>
+                    <TableHead className="text-slate-900 font-bold">Lote</TableHead>
+                    <TableHead className="text-slate-900 font-bold">Vencimiento</TableHead>
+                    <TableHead className="text-right text-slate-900 font-bold">Cantidad</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receiptData?.items.map((item: any, idx: number) => (
+                    <TableRow key={idx} className="border-slate-200">
+                      <TableCell className="font-mono text-sm">{item.materialSku}</TableCell>
+                      <TableCell className="font-medium">{item.materialName}</TableCell>
+                      <TableCell>{item.batch || '-'}</TableCell>
+                      <TableCell>{item.expiryDate || '-'}</TableCell>
+                      <TableCell className="text-right font-bold text-lg">{item.quantity}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="mt-12 grid grid-cols-2 gap-8 pt-12 border-t border-slate-200">
+              <div className="border-t border-slate-400 pt-2 text-center text-xs font-bold uppercase text-slate-500">
+                Firma Responsable Recepción
+              </div>
+              <div className="border-t border-slate-400 pt-2 text-center text-xs font-bold uppercase text-slate-500">
+                Firma Transportista / Entrega
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="bg-slate-50 p-4 border-t border-slate-200 gap-2">
+            <Button variant="outline" onClick={() => setShowReceipt(false)}>Cerrar</Button>
+            <Button onClick={() => window.print()} className="bg-slate-900 text-white hover:bg-slate-800">
+              <Printer className="w-4 h-4 mr-2" /> Imprimir Parte
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
