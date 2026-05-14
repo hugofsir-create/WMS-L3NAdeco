@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component, type ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, Component, type ReactNode } from 'react';
 import { 
   LayoutDashboard, 
   Package, 
@@ -13,7 +13,10 @@ import {
   LogOut,
   AlertCircle,
   CheckCircle2,
-  Filter
+  Filter,
+  Boxes,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { 
   collection, 
@@ -194,6 +197,12 @@ function AppContent() {
                 onClick={() => setActiveTab('materials')} 
               />
               <SidebarItem 
+                icon={<Boxes className="w-5 h-5" />} 
+                label="Stock Detallado" 
+                active={activeTab === 'inventory_detail'} 
+                onClick={() => setActiveTab('inventory_detail')} 
+              />
+              <SidebarItem 
                 icon={<ArrowDownCircle className="w-5 h-5" />} 
                 label="Ingresos" 
                 active={activeTab === 'inbound'} 
@@ -235,6 +244,7 @@ function AppContent() {
             >
               {activeTab === 'dashboard' && <DashboardView inventory={inventory} materials={materials} movements={movements} />}
               {activeTab === 'materials' && <MaterialsView materials={materials} />}
+              {activeTab === 'inventory_detail' && <InventoryDetailView inventory={inventory} materials={materials} movements={movements} />}
               {activeTab === 'inbound' && <InboundView materials={materials} />}
               {activeTab === 'outbound' && <OutboundView materials={materials} inventory={inventory} />}
               {activeTab === 'history' && <HistoryView movements={movements} />}
@@ -1454,6 +1464,134 @@ function HistoryView({ movements }: { movements: Movement[] }) {
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-12 text-neutral-500">
                       No hay movimientos registrados para este filtro.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function InventoryDetailView({ materials, movements }: { inventory: Inventory[], materials: Material[], movements: Movement[] }) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const detailedStock = useMemo(() => {
+    const stockMap: Record<string, { 
+      sku: string, 
+      name: string, 
+      batch: string, 
+      expiryDate: string, 
+      apto: number, 
+      noApto: number 
+    }> = {};
+
+    movements.forEach(m => {
+      const key = `${m.materialSku}-${m.batch || ''}-${m.expiryDate || ''}`;
+      if (!stockMap[key]) {
+        stockMap[key] = {
+          sku: m.materialSku,
+          name: m.materialName,
+          batch: m.batch || '',
+          expiryDate: m.expiryDate || '',
+          apto: 0,
+          noApto: 0
+        };
+      }
+
+      const qty = Number(String(m.quantity).replace(',', '.'));
+      if (m.type === 'IN') {
+        if (m.status === 'APTO') stockMap[key].apto += qty;
+        else stockMap[key].noApto += qty;
+      } else {
+        if (m.status === 'APTO') stockMap[key].apto -= qty;
+        else stockMap[key].noApto -= qty;
+      }
+    });
+
+    return Object.values(stockMap).filter(item => Math.abs(item.apto) > 0.0001 || Math.abs(item.noApto) > 0.0001);
+  }, [movements]);
+
+  const filteredStock = detailedStock.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.batch.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto pb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Stock Detallado</h1>
+          <p className="text-slate-400">Desglose de inventario por lote, vencimiento y estado</p>
+        </div>
+        <div className="flex gap-3">
+           <div className="relative w-full md:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Input 
+                placeholder="Filtrar por SKU, nombre o lote..." 
+                className="pl-10 bg-slate-900/50 border-slate-700 font-medium" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+        </div>
+      </div>
+
+      <Card className="bg-slate-900 border-slate-800 shadow-xl overflow-hidden">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-950/50 border-slate-800">
+                <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableHead className="text-slate-400 font-bold py-4">Material</TableHead>
+                  <TableHead className="text-slate-400 font-bold">Lote</TableHead>
+                  <TableHead className="text-slate-400 font-bold">Vencimiento</TableHead>
+                  <TableHead className="text-right text-emerald-500 font-bold">Cant. Apto</TableHead>
+                  <TableHead className="text-right text-rose-500 font-bold">Cant. No Apto</TableHead>
+                  <TableHead className="text-right text-blue-400 font-bold pr-6">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStock.map((item, idx) => {
+                  const total = item.apto + item.noApto;
+                  return (
+                    <TableRow key={`${item.sku}-${item.batch}-${item.expiryDate}-${idx}`} className="border-slate-800 hover:bg-slate-800/30 transition-colors">
+                      <TableCell className="py-4">
+                         <div className="font-medium text-slate-200">{item.name}</div>
+                         <div className="text-[10px] text-slate-500 font-mono tracking-wider italic">SKU: {item.sku}</div>
+                      </TableCell>
+                      <TableCell className="text-slate-300 font-mono text-sm leading-none">
+                         {item.batch ? (
+                           <Badge variant="outline" className="border-slate-700 bg-slate-800/50 text-slate-300 font-mono uppercase text-[10px] px-1.5 py-0">
+                              {item.batch}
+                           </Badge>
+                         ) : (
+                           <span className="text-slate-600 italic text-xs">Sin lote</span>
+                         )}
+                      </TableCell>
+                      <TableCell className="text-slate-300 text-sm">
+                        {item.expiryDate || <span className="text-slate-600 italic text-xs">Sin vto.</span>}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-emerald-400 tabular-nums">
+                        {item.apto.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-rose-400 tabular-nums">
+                        {item.noApto.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right font-black text-white pr-6 tabular-nums">
+                        {total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredStock.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-32 text-slate-500 italic">
+                      No hay existencias registradas con estos criterios.
                     </TableCell>
                   </TableRow>
                 )}
